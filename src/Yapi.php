@@ -47,7 +47,6 @@ class Yapi
 
     /**
      * http请求
-     * 修改日期：2021年06月19日12:07
      * @param string $api http地址
      * @param string $method 请求方式
      * @param array $data 请求数据：
@@ -62,8 +61,6 @@ class Yapi
      * @param bool $checkLogin 检查登录
      * @return array|bool|string
      * @throws \Exception
-     * @author fuyelk <fuyelk@fuyelk.com>
-     * @date 2021/07/07 13:39
      */
     protected function request($api, $method = 'GET', $data = [], $checkResponseData = false, $checkLogin = true)
     {
@@ -134,8 +131,6 @@ class Yapi
      * 登录
      * @return bool
      * @throws \Exception
-     * @author fuyelk <fuyelk@fuyelk.com>
-     * @date 2021/07/07 15:51
      */
     private function login()
     {
@@ -161,23 +156,21 @@ class Yapi
      * @param string $type [html/markdown/json/swagger]
      * @param string $filePath 到处文件路径
      * @return bool
-     * @author fuyelk <fuyelk@fuyelk.com>
-     * @date 2021/07/07 16:58
      */
-    public function export($project_id, $type, $filePath)
+    public function export($projectId, $type, $filePath)
     {
         switch ($type) {
             case 'html' :
-                $api = "/api/plugin/export?type=html&pid={$project_id}&status=all&isWiki=false";
+                $api = "/api/plugin/export?type=html&pid={$projectId}&status=all&isWiki=false";
                 break;
             case 'json':
-                $api = "/api/plugin/export?type=json&pid={$project_id}&status=all&isWiki=false";
+                $api = "/api/plugin/export?type=json&pid={$projectId}&status=all&isWiki=false";
                 break;
             case 'markdown':
-                $api = "/api/plugin/export?type=markdown&pid={$project_id}&status=all&isWiki=false";
+                $api = "/api/plugin/export?type=markdown&pid={$projectId}&status=all&isWiki=false";
                 break;
             case 'swagger':
-                $api = "/api/plugin/exportSwagger?type=OpenAPIV2&pid={$project_id}&status=all&isWiki=false";
+                $api = "/api/plugin/exportSwagger?type=OpenAPIV2&pid={$projectId}&status=all&isWiki=false";
                 break;
             default :
                 $this->_error = '导出文件类型有误';
