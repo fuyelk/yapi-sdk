@@ -1,0 +1,19 @@
+{
+    "name": "fuyelk/yapi-sdk",
+    "description": "SDK for Yapi",
+    "type": "libary",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "fuyelk",
+            "email": "fuyelk@fuyelk.com",
+            "homepage": "https://www.milinger.com"
+        }
+    ],
+    "require": {},
+    "autoload" :{
+        "psr-4":{
+            "fuyelk\\yapi": "src/"
+        }
+    }
+}
