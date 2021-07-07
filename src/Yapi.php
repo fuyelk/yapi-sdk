@@ -111,7 +111,7 @@ class Yapi
                     throw new \Exception($this->_error);
                 }
                 // 重发一次当前请求，不再检查登录
-                return $this->request($this->host . $api, $method, $data, $checkResponseData, false);
+                return $this->request($api, $method, $data, $checkResponseData, false);
             }
         }
 
@@ -139,7 +139,7 @@ class Yapi
      */
     private function login()
     {
-        $api = $this->host . '/api/user/login';
+        $api = '/api/user/login';
         $data = [
             'email' => $this->email,
             'password' => $this->password
