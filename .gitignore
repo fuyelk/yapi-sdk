@@ -1,9 +1,8 @@
 /vendor/
 /composer.lock
 /demo/temp/*
-/src/config.json
-/src/conf
 /src/*.cookies
+/src/*.check
 .idea
 !.gitignore
 !.gitkeep

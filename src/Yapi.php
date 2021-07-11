@@ -11,6 +11,11 @@ class Yapi
     private static $COOKIE_FILE = __DIR__ . '/cookie.cookies';
 
     /**
+     * 账号校验文件
+     */
+    private static $CHECK_FILE = __DIR__ . '/account.check';
+
+    /**
      * 服务器HOST
      */
     private $host = '';
@@ -43,6 +48,21 @@ class Yapi
         $this->email = $email;
         $this->password = $password;
         $this->host = $host;
+
+        $accountCheck = md5(serialize([$email, $password, $host]));
+
+        if (is_file(self::$CHECK_FILE)) {
+            // 存在旧的账号校验文件
+            $oldCheck = file_get_contents(self::$CHECK_FILE);
+            if ($oldCheck != $accountCheck) {
+                // 更换了账号，则清空cookie
+                $this->clearCookie();
+            }
+        } else {
+            // 没有账号校验文件，则创建
+            $this->clearCookie();
+            file_put_contents(self::$CHECK_FILE, $accountCheck);
+        }
     }
 
     /**
@@ -151,9 +171,22 @@ class Yapi
     }
 
     /**
+     * 清除Cookie
+     * @return bool
+     * @author fuyelk <fuyelk@fuyelk.com>
+     */
+    public function clearCookie()
+    {
+        if (is_file(self::$COOKIE_FILE)) {
+            @unlink(self::$COOKIE_FILE);
+        }
+        return true;
+    }
+
+    /**
      * 导出文档
      * @param $project_id
-     * @param string $type [html/markdown/json/swagger]
+     * @param string $type 导出文档类别，支持html/markdown/json/swagger
      * @param string $filePath 到处文件路径
      * @return bool
      */
