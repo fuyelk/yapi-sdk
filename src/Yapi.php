@@ -3,6 +3,8 @@
 
 namespace fuyelk\yapi;
 
+use Exception;
+
 class Yapi
 {
     /**
@@ -13,7 +15,7 @@ class Yapi
     /**
      * 账号校验文件
      */
-    private static $CHECK_FILE = __DIR__ . '/account.check';
+    private static $ACCOUNT_FILE = __DIR__ . '/account.check';
 
     /**
      * 服务器HOST
@@ -51,17 +53,20 @@ class Yapi
 
         $accountCheck = md5(serialize([$email, $password, $host]));
 
-        if (is_file(self::$CHECK_FILE)) {
+        if (is_file(self::$ACCOUNT_FILE)) {
             // 存在旧的账号校验文件
-            $oldCheck = file_get_contents(self::$CHECK_FILE);
+            $oldCheck = file_get_contents(self::$ACCOUNT_FILE);
             if ($oldCheck != $accountCheck) {
                 // 更换了账号，则清空cookie
                 $this->clearCookie();
+
+                // 删除账号记录
+                @unlink(self::$ACCOUNT_FILE);
             }
         } else {
             // 没有账号校验文件，则创建
             $this->clearCookie();
-            file_put_contents(self::$CHECK_FILE, $accountCheck);
+            file_put_contents(self::$ACCOUNT_FILE, $accountCheck);
         }
     }
 
@@ -77,12 +82,11 @@ class Yapi
      *       ...
      *  ]
      * </pre>
-     * @param bool $checkResponseData 检查返回数据
      * @param bool $checkLogin 检查登录
      * @return array|bool|string
-     * @throws \Exception
+     * @throws Exception
      */
-    protected function request($api, $method = 'GET', $data = [], $checkResponseData = false, $checkLogin = true)
+    protected function request($api, $method = 'GET', $data = [], $checkLogin = true)
     {
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -90,12 +94,12 @@ class Yapi
             CURLOPT_URL => $this->host . $api,
             CURLOPT_CUSTOMREQUEST => strtoupper($method), // 请求方式
             CURLOPT_USERAGENT => "Mozilla / 5.0 (Windows NT 10.0; Win64; x64)",// 模拟常用浏览器的useragent
-            CURLOPT_RETURNTRANSFER => true,   // 获取的信息以文件流的形式返回，而不是直接输出
-            CURLOPT_SSL_VERIFYPEER => false,  // https请求不验证证书
-            CURLOPT_SSL_VERIFYHOST => false,  // https请求不验证hosts
-            CURLOPT_MAXREDIRS => 10,          // 最深允许重定向级数
-            CURLOPT_CONNECTTIMEOUT => 10,// 最长等待连接成功时间
-            CURLOPT_TIMEOUT => 50,      // 最长等待响应完成时间
+            CURLOPT_RETURNTRANSFER => true,     // 获取的信息以文件流的形式返回，而不是直接输出
+            CURLOPT_SSL_VERIFYPEER => false,    // https请求不验证证书
+            CURLOPT_SSL_VERIFYHOST => false,    // https请求不验证hosts
+            CURLOPT_MAXREDIRS => 10,            // 最深允许重定向级数
+            CURLOPT_CONNECTTIMEOUT => 10,       // 最长等待连接成功时间
+            CURLOPT_TIMEOUT => 50,              // 最长等待响应完成时间
             CURLOPT_COOKIEJAR => self::$COOKIE_FILE, // 设置cookie存储文件
             CURLOPT_COOKIEFILE => self::$COOKIE_FILE // 设置cookie上传文件
         ]);
@@ -112,36 +116,33 @@ class Yapi
         $err = curl_error($ch);
         curl_close($ch);
 
-        if ($err) throw new \Exception($err);
+        if ($err) throw new Exception($err);
 
         if ($checkLogin) {
-            // 接口返回未登录标识，未登录则尝试登录一次
-            $data = json_decode($response, true);
+            // 解析接口数据
+            $responseArr = json_decode($response, true);
 
-            if (!empty($response) &&
-                $data &&
-                !empty($data['errcode']) &&
-                '40011' == strval($data['errcode'])
-            ) {
+            // 接口返回未登录标识，则尝试登录一次
+            if (!empty($responseArr['errcode']) && '40011' == strval($responseArr['errcode'])) {
                 $login_res = $this->login();
                 if (!$login_res) {
-                    throw new \Exception($this->_error);
+                    throw new Exception($this->_error);
                 }
                 // 重发一次当前请求，不再检查登录
-                return $this->request($api, $method, $data, $checkResponseData, false);
+                return $this->request($api, $method, $data, false);
             }
         }
 
-        if ($checkResponseData) {
-            $response = json_decode($response, true);
-            if (!empty($response['errcode']) && !empty($response['errmsg'])) {
-                throw new \Exception($response['errmsg']);
+        $responseArr = json_decode($response, true);
+
+        if (is_array($responseArr)) {
+            if (!empty($responseArr['errcode']) && !empty($responseArr['errmsg'])) {
+                throw new Exception($responseArr['errmsg']);
             }
 
-            if (!isset($response['data'])) {
-                throw new \Exception('数据有误');
+            if (key_exists('data', $responseArr)) {
+                return $responseArr['data'];
             }
-            return $response['data'];
         }
 
         return $response;
@@ -150,7 +151,6 @@ class Yapi
     /**
      * 登录
      * @return bool
-     * @throws \Exception
      */
     private function login()
     {
@@ -161,8 +161,8 @@ class Yapi
         ];
 
         try {
-            self::request($api, 'POST', $data, true, false);
-        } catch (\Exception $e) {
+            self::request($api, 'POST', $data, false);
+        } catch (Exception $e) {
             $this->_error = $e->getMessage();
             return false;
         }
@@ -185,7 +185,7 @@ class Yapi
 
     /**
      * 导出文档
-     * @param $project_id
+     * @param int $projectId 项目ID
      * @param string $type 导出文档类别，支持html/markdown/json/swagger
      * @param string $filePath 到处文件路径
      * @return bool
@@ -212,9 +212,13 @@ class Yapi
 
         try {
             $content = $this->request($api, 'get');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->_error = $e->getMessage();
             return false;
+        }
+
+        if (!is_dir(dirname($filePath))) {
+            mkdir(dirname($filePath), 0755, true);
         }
         file_put_contents($filePath, $content);
         return true;
